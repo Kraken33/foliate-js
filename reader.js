@@ -42,7 +42,8 @@ const getCSS = ({ spacing, justify, hyphenate }) => `
     }
 `
 
-const $ = document.querySelector.bind(document)
+const select = selector => document.querySelector(selector)
+const selectAll = selector => document.querySelectorAll(selector)
 
 const locales = 'en'
 const percentFormat = new Intl.NumberFormat(locales, { style: 'percent' })
@@ -72,15 +73,15 @@ class Reader {
     annotations = new Map()
     annotationsByValue = new Map()
     closeSideBar() {
-        $('#dimming-overlay').classList.remove('show')
-        $('#side-bar').classList.remove('show')
+        select('#dimming-overlay').classList.remove('show')
+        select('#side-bar').classList.remove('show')
     }
     constructor() {
-        $('#side-bar-button').addEventListener('click', () => {
-            $('#dimming-overlay').classList.add('show')
-            $('#side-bar').classList.add('show')
+        select('#side-bar-button').addEventListener('click', () => {
+            select('#dimming-overlay').classList.add('show')
+            select('#side-bar').classList.add('show')
         })
-        $('#dimming-overlay').addEventListener('click', () => this.closeSideBar())
+        select('#dimming-overlay').addEventListener('click', () => this.closeSideBar())
 
         const menu = createMenu([
             {
@@ -98,8 +99,8 @@ class Reader {
         ])
         menu.element.classList.add('menu')
 
-        $('#menu-button').append(menu.element)
-        $('#menu-button > button').addEventListener('click', () =>
+        select('#menu-button').append(menu.element)
+        select('#menu-button > button').addEventListener('click', () =>
             menu.element.classList.toggle('show'))
         menu.groups.layout.select('paginated')
     }
@@ -114,29 +115,29 @@ class Reader {
         this.view.renderer.setStyles?.(getCSS(this.style))
         this.view.renderer.next()
 
-        $('#header-bar').style.visibility = 'visible'
-        $('#nav-bar').style.visibility = 'visible'
-        $('#left-button').addEventListener('click', () => this.view.goLeft())
-        $('#right-button').addEventListener('click', () => this.view.goRight())
+        select('#header-bar').style.visibility = 'visible'
+        select('#nav-bar').style.visibility = 'visible'
+        select('#left-button').addEventListener('click', () => this.view.goLeft())
+        select('#right-button').addEventListener('click', () => this.view.goRight())
 
-        const slider = $('#progress-slider')
+        const slider = select('#progress-slider')
         slider.dir = book.dir
         slider.addEventListener('input', e =>
             this.view.goToFraction(parseFloat(e.target.value)))
         for (const fraction of this.view.getSectionFractions()) {
             const option = document.createElement('option')
             option.value = fraction
-            $('#tick-marks').append(option)
+            select('#tick-marks').append(option)
         }
 
         document.addEventListener('keydown', this.#handleKeydown.bind(this))
 
         const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
         document.title = title
-        $('#side-bar-title').innerText = title
-        $('#side-bar-author').innerText = formatContributor(book.metadata?.author)
+        select('#side-bar-title').innerText = title
+        select('#side-bar-author').innerText = formatContributor(book.metadata?.author)
         Promise.resolve(book.getCover?.())?.then(blob =>
-            blob ? $('#side-bar-cover').src = URL.createObjectURL(blob) : null)
+            blob ? select('#side-bar-cover').src = URL.createObjectURL(blob) : null)
 
         const toc = book.toc
         if (toc) {
@@ -144,7 +145,7 @@ class Reader {
                 this.view.goTo(href).catch(e => console.error(e))
                 this.closeSideBar()
             })
-            $('#toc-view').append(this.#tocView.element)
+            select('#toc-view').append(this.#tocView.element)
         }
 
         // load and show highlights embedded in the file by Calibre
@@ -194,7 +195,7 @@ class Reader {
         const loc = pageItem
             ? `Page ${pageItem.label}`
             : `Loc ${location.current}`
-        const slider = $('#progress-slider')
+        const slider = select('#progress-slider')
         slider.style.visibility = 'visible'
         slider.value = fraction
         slider.title = `${percent} · ${loc}`
@@ -203,7 +204,7 @@ class Reader {
 }
 
 const open = async file => {
-    document.body.removeChild($('#drop-target'))
+    select('#drop-target').remove()
     const reader = new Reader()
     globalThis.reader = reader
     await reader.open(file)
@@ -219,13 +220,13 @@ const dropHandler = e => {
         open(entry.isFile ? item.getAsFile() : entry).catch(e => console.error(e))
     }
 }
-const dropTarget = $('#drop-target')
+const dropTarget = select('#drop-target')
 dropTarget.addEventListener('drop', dropHandler)
 dropTarget.addEventListener('dragover', dragOverHandler)
 
-$('#file-input').addEventListener('change', e =>
+select('#file-input').addEventListener('change', e =>
     open(e.target.files[0]).catch(e => console.error(e)))
-$('#file-button').addEventListener('click', () => $('#file-input').click())
+select('#file-button').addEventListener('click', () => select('#file-input').click())
 
 const params = new URLSearchParams(location.search)
 const url = params.get('url')
