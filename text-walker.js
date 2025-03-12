@@ -27,6 +27,105 @@ const acceptNode = node => {
     return NodeFilter.FILTER_ACCEPT
 }
 
+const getWordAtPoint = (node, offset) => {
+    if (node.nodeType !== Node.TEXT_NODE) return null
+    
+    const text = node.nodeValue
+    if (!text?.trim()) return null // Skip empty text nodes
+
+    // Find word boundaries
+    let start = offset
+    let end = offset
+
+    // Quick check if we're on a word character
+    if (/\w/.test(text[offset])) {
+        // Already on a word, expand to boundaries
+        while (start > 0 && /\w/.test(text[start - 1])) start--
+        while (end < text.length && /\w/.test(text[end])) end++
+    } else {
+        // Find nearest word within reasonable bounds (limit search to 10 chars)
+        const searchLimit = 10
+        let found = false
+
+        // Look left
+        for (let i = offset - 1; i >= Math.max(0, offset - searchLimit); i--) {
+            if (/\w/.test(text[i])) {
+                start = end = i
+                found = true
+                break
+            }
+        }
+
+        // Look right if didn't find on left
+        if (!found) {
+            for (let i = offset + 1; i < Math.min(text.length, offset + searchLimit); i++) {
+                if (/\w/.test(text[i])) {
+                    start = end = i
+                    found = true
+                    break
+                }
+            }
+        }
+
+        // Expand word boundaries if found a word
+        if (found) {
+            while (start > 0 && /\w/.test(text[start - 1])) start--
+            while (end < text.length && /\w/.test(text[end])) end++
+        }
+    }
+
+    // If no word found, return null
+    if (start === end) return null
+
+    // Find sentence boundaries (limit search to 200 chars)
+    const searchLimit = 200
+    let sentenceStart = Math.max(0, start - searchLimit)
+    let sentenceEnd = Math.min(text.length, end + searchLimit)
+
+    // Look for sentence start
+    for (let i = start - 1; i >= sentenceStart; i--) {
+        if (/[.!?]\s+/.test(text.slice(i, i + 2))) {
+            sentenceStart = i + 2
+            break
+        }
+    }
+
+    // Look for sentence end
+    for (let i = end; i < sentenceEnd; i++) {
+        if (/[.!?]/.test(text[i])) {
+            sentenceEnd = i + 1
+            break
+        }
+    }
+
+    // Get context words
+    const beforeText = text.slice(sentenceStart, start).trim()
+    const afterText = text.slice(end, sentenceEnd).trim()
+    
+    // Split into words and limit
+    const beforeWords = beforeText ? beforeText.split(/\s+/).slice(-5) : []
+    const afterWords = afterText ? afterText.split(/\s+/).slice(0, 5) : []
+
+    // Build context
+    const context = [
+        ...beforeWords,
+        text.slice(start, end),
+        ...afterWords
+    ].join(' ')
+
+    return {
+        word: text.slice(start, end),
+        context: context.trim(),
+        range: {
+            node,
+            startOffset: start,
+            endOffset: end,
+            contextStartOffset: sentenceStart,
+            contextEndOffset: sentenceEnd
+        }
+    }
+}
+
 export const textWalker = function* (x, func) {
     const root = x.commonAncestorContainer ?? x.body ?? x
     const walker = document.createTreeWalker(root, filter, { acceptNode })
@@ -41,3 +140,5 @@ export const textWalker = function* (x, func) {
     }
     for (const match of func(strs, makeRange)) yield match
 }
+
+export { getWordAtPoint }

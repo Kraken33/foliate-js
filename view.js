@@ -1,7 +1,7 @@
 import * as CFI from './epubcfi.js'
 import { TOCProgress, SectionProgress } from './progress.js'
 import { Overlayer } from './overlayer.js'
-import { textWalker } from './text-walker.js'
+import { textWalker, getWordAtPoint } from './text-walker.js'
 
 const SEARCH_PREFIX = 'foliate-search:'
 
@@ -342,6 +342,32 @@ export class View extends HTMLElement {
 
         this.#handleLinks(doc, index)
         this.#cursorAutohider.cloneFor(doc.documentElement)
+
+        // Add click handler for words
+        doc.addEventListener('click', e => {
+            // Prevent handling if we're clicking a link
+            if (e.target.closest('a[href]')) return
+
+            const range = doc.caretRangeFromPoint?.(e.clientX, e.clientY) || 
+                         doc.createRange() // Fallback for Firefox
+
+            if (!range?.startContainer) return
+
+            const wordInfo = getWordAtPoint(range.startContainer, range.startOffset)
+            if (!wordInfo) return
+
+            // Create range for the word
+            const wordRange = doc.createRange()
+            wordRange.setStart(wordInfo.range.node, wordInfo.range.startOffset)
+            wordRange.setEnd(wordInfo.range.node, wordInfo.range.endOffset)
+
+            this.#emit('word-click', {
+                word: wordInfo.word,
+                context: wordInfo.context,
+                range: wordRange,
+                index
+            })
+        }, { passive: true }) // Add passive flag for better performance
 
         this.#emit('load', { doc, index })
     }

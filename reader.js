@@ -63,7 +63,7 @@ const formatContributor = contributor => Array.isArray(contributor)
     ? listFormat.format(contributor.map(formatOneContributor))
     : formatOneContributor(contributor)
 
-class Reader {
+export class Reader {
     #tocView
     style = {
         spacing: 1.4,
@@ -190,6 +190,7 @@ class Reader {
         doc.addEventListener('keydown', this.#handleKeydown.bind(this))
     }
     #onRelocate({ detail }) {
+        console.log('onRelocate', this.view.getSectionFractions())
         const { fraction, location, tocItem, pageItem } = detail
         const percent = percentFormat.format(fraction)
         const loc = pageItem
@@ -202,33 +203,3 @@ class Reader {
         if (tocItem?.href) this.#tocView?.setCurrentHref?.(tocItem.href)
     }
 }
-
-const open = async file => {
-    select('#drop-target').remove()
-    const reader = new Reader()
-    globalThis.reader = reader
-    await reader.open(file)
-}
-
-const dragOverHandler = e => e.preventDefault()
-const dropHandler = e => {
-    e.preventDefault()
-    const item = Array.from(e.dataTransfer.items)
-        .find(item => item.kind === 'file')
-    if (item) {
-        const entry = item.webkitGetAsEntry()
-        open(entry.isFile ? item.getAsFile() : entry).catch(e => console.error(e))
-    }
-}
-const dropTarget = select('#drop-target')
-dropTarget.addEventListener('drop', dropHandler)
-dropTarget.addEventListener('dragover', dragOverHandler)
-
-select('#file-input').addEventListener('change', e =>
-    open(e.target.files[0]).catch(e => console.error(e)))
-select('#file-button').addEventListener('click', () => select('#file-input').click())
-
-const params = new URLSearchParams(location.search)
-const url = params.get('url')
-if (url) open(url).catch(e => console.error(e))
-else dropTarget.style.visibility = 'visible'
