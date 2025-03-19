@@ -365,7 +365,8 @@ export class View extends HTMLElement {
                 word: wordInfo.word,
                 context: wordInfo.context,
                 range: wordRange,
-                index
+                index,
+                element: wordInfo.element
             })
         }, { passive: true }) // Add passive flag for better performance
 

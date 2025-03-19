@@ -113,6 +113,22 @@ const getWordAtPoint = (node, offset) => {
         ...afterWords
     ].join(' ')
 
+    // Create span element for the clicked word
+    const span = document.createElement('span')
+    span.className = 'clicked'
+    span.textContent = text.slice(start, end)
+
+    // Split the text node and insert the span
+    const beforeTxt = text.slice(0, start)
+    const afterTxt = text.slice(end)
+    
+    const fragment = document.createDocumentFragment()
+    if (beforeTxt) fragment.appendChild(document.createTextNode(beforeTxt))
+    fragment.appendChild(span)
+    if (afterTxt) fragment.appendChild(document.createTextNode(afterTxt))
+    
+    node.parentNode.replaceChild(fragment, node)
+
     return {
         word: text.slice(start, end),
         context: context.trim(),
@@ -122,7 +138,8 @@ const getWordAtPoint = (node, offset) => {
             endOffset: end,
             contextStartOffset: sentenceStart,
             contextEndOffset: sentenceEnd
-        }
+        },
+        element: span
     }
 }
 

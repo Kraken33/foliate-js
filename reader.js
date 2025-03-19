@@ -63,6 +63,124 @@ const formatContributor = contributor => Array.isArray(contributor)
     ? listFormat.format(contributor.map(formatOneContributor))
     : formatOneContributor(contributor)
 
+function getAllElementsInRange(range) {
+        const elements = [];
+        const startElement = range.startContainer.nodeType === Node.ELEMENT_NODE 
+            ? range.startContainer 
+            : range.startContainer.parentElement;
+        const endElement = range.endContainer.nodeType === Node.ELEMENT_NODE 
+            ? range.endContainer 
+            : range.endContainer.parentElement;
+
+        // If start and end are the same element, return just that element
+        if (startElement === endElement) {
+            return [startElement];
+        }
+
+        // Get all elements between start and end
+        let currentElement = startElement;
+        while (currentElement && currentElement !== endElement) {
+            elements.push(currentElement);
+            currentElement = currentElement.nextElementSibling;
+        }
+        // Add the end element
+        if (currentElement === endElement) {
+            elements.push(endElement);
+        }
+
+        return elements;
+    }
+
+/**
+ * Creates a regex pattern from a set of words
+ * @param {Set<string>} wordSet - Set of words to match
+ * @returns {RegExp} Regex pattern that matches any of the words
+ */
+function createWordMatchPattern(wordSet) {
+    const pattern = Array.from(wordSet).join('|');
+    return new RegExp(`\\b(${pattern})\\b`, 'gi');
+}
+
+/**
+ * Finds all word matches in a text node
+ * @param {Text} node - Text node to search
+ * @param {RegExp} regex - Regex pattern to match
+ * @param {Map} foundWords - Map to store word counts
+ * @returns {Array} Array of match objects
+ */
+function findMatchesInTextNode(node, regex, foundWords) {
+    const matches = [];
+    const text = node.textContent;
+    let match;
+    
+    // Reset regex for each text node
+    regex.lastIndex = 0;
+    
+    while ((match = regex.exec(text)) !== null) {
+        matches.push({
+            node,
+            word: match[0],
+            startOffset: match.index,
+            endOffset: match.index + match[0].length
+        });
+        
+        // Update word count
+        const currentCount = foundWords.get(match[0].toLowerCase()) || 0;
+        foundWords.set(match[0].toLowerCase(), currentCount + 1);
+    }
+    
+    return matches;
+}
+
+/**
+ * Creates a highlighted span element for a word
+ * @param {Text} node - Text node containing the word
+ * @param {number} startOffset - Start position of the word
+ * @param {number} endOffset - End position of the word
+ */
+function highlightWordInRange(node, startOffset, endOffset) {
+    const range = document.createRange();
+    range.setStart(node, startOffset);
+    range.setEnd(node, endOffset);
+    
+    const span = document.createElement('span');
+    span.style.backgroundColor = 'yellow';
+    span.style.color = 'black';
+    span.classList.add('highlight-word');
+    range.surroundContents(span);
+}
+
+/**
+ * Processes text nodes in an element to find and highlight words
+ * @param {Element} element - Element to process
+ * @param {RegExp} regex - Regex pattern to match
+ * @param {Map} foundWords - Map to store word counts
+ */
+function processElement(element, regex, foundWords) {
+    // Store matches to process later
+    const matches = [];
+    
+    // Walk through text nodes
+    const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+
+    // Find all matches first
+    let node;
+    while (node = walker.nextNode()) {
+        const nodeMatches = findMatchesInTextNode(node, regex, foundWords);
+        matches.push(...nodeMatches);
+    }
+    
+    // Apply highlights in reverse order to maintain correct positions
+    matches.reverse().forEach(({ node, startOffset, endOffset }) => {
+        highlightWordInRange(node, startOffset, endOffset);
+    });
+}
+
 export class Reader {
     #tocView
     style = {
@@ -72,6 +190,8 @@ export class Reader {
     }
     annotations = new Map()
     annotationsByValue = new Map()
+    highlightedWords = new Set()
+    currentScreen = null
     closeSideBar() {
         select('#dimming-overlay').classList.remove('show')
         select('#side-bar').classList.remove('show')
@@ -181,6 +301,21 @@ export class Reader {
             })
         }
     }
+    highlightCurrentScreen() {
+        if (this.currentScreen) {
+            const foundWords = new Map(); // word -> count
+            const regex = createWordMatchPattern(this.highlightedWords);
+            
+            this.currentScreen.forEach(element => {
+                processElement(element, regex, foundWords);
+            });
+            
+            console.log('Found words:', Object.fromEntries(foundWords));
+        }
+    }
+    setHighlightedWords(list) {
+        this.highlightedWords = list
+    }
     #handleKeydown(event) {
         const k = event.key
         if (k === 'ArrowLeft' || k === 'h') this.view.goLeft()
@@ -190,8 +325,12 @@ export class Reader {
         doc.addEventListener('keydown', this.#handleKeydown.bind(this))
     }
     #onRelocate({ detail }) {
-        console.log('onRelocate', this.view.getSectionFractions())
-        const { fraction, location, tocItem, pageItem } = detail
+        const { fraction, location, tocItem, pageItem, range, doc } = detail
+        const foundWords = new Map(); // word -> count
+
+        this.currentScreen = getAllElementsInRange(range);
+        this.highlightCurrentScreen();
+
         const percent = percentFormat.format(fraction)
         const loc = pageItem
             ? `Page ${pageItem.label}`
