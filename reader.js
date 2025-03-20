@@ -197,11 +197,11 @@ export class Reader {
         select('#side-bar').classList.remove('show')
     }
     constructor() {
-        select('#side-bar-button').addEventListener('click', () => {
-            select('#dimming-overlay').classList.add('show')
-            select('#side-bar').classList.add('show')
-        })
-        select('#dimming-overlay').addEventListener('click', () => this.closeSideBar())
+        // select('#side-bar-button').addEventListener('click', () => {
+        //     select('#dimming-overlay').classList.add('show')
+        //     select('#side-bar').classList.add('show')
+        // })
+        // select('#dimming-overlay').addEventListener('click', () => this.closeSideBar())
 
         const menu = createMenu([
             {
@@ -217,16 +217,16 @@ export class Reader {
                 },
             },
         ])
-        menu.element.classList.add('menu')
+        // menu.element.classList.add('menu')
 
-        select('#menu-button').append(menu.element)
-        select('#menu-button > button').addEventListener('click', () =>
-            menu.element.classList.toggle('show'))
-        menu.groups.layout.select('paginated')
+        // select('#menu-button').append(menu.element)
+        // select('#menu-button > button').addEventListener('click', () =>
+        //     menu.element.classList.toggle('show'))
+        // menu.groups.layout.select('paginated')
     }
     async open(file) {
-        this.view = document.createElement('foliate-view')
-        document.body.append(this.view)
+        this.view = document.getElementById('foliate-view')
+        // document.body.append(this.view)
         await this.view.open(file)
         this.view.addEventListener('load', this.#onLoad.bind(this))
         this.view.addEventListener('relocate', this.#onRelocate.bind(this))
@@ -235,71 +235,71 @@ export class Reader {
         this.view.renderer.setStyles?.(getCSS(this.style))
         this.view.renderer.next()
 
-        select('#header-bar').style.visibility = 'visible'
-        select('#nav-bar').style.visibility = 'visible'
-        select('#left-button').addEventListener('click', () => this.view.goLeft())
-        select('#right-button').addEventListener('click', () => this.view.goRight())
+        // select('#header-bar').style.visibility = 'visible'
+        // select('#nav-bar').style.visibility = 'visible'
+        // select('#left-button').addEventListener('click', () => this.view.goLeft())
+        // select('#right-button').addEventListener('click', () => this.view.goRight())
 
-        const slider = select('#progress-slider')
-        slider.dir = book.dir
-        slider.addEventListener('input', e =>
-            this.view.goToFraction(parseFloat(e.target.value)))
-        for (const fraction of this.view.getSectionFractions()) {
-            const option = document.createElement('option')
-            option.value = fraction
-            select('#tick-marks').append(option)
-        }
+        // const slider = select('#progress-slider')
+        // slider.dir = book.dir
+        // slider.addEventListener('input', e =>
+        //     this.view.goToFraction(parseFloat(e.target.value)))
+        // for (const fraction of this.view.getSectionFractions()) {
+        //     const option = document.createElement('option')
+        //     option.value = fraction
+        //     select('#tick-marks').append(option)
+        // }
 
         document.addEventListener('keydown', this.#handleKeydown.bind(this))
 
-        const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
-        document.title = title
-        select('#side-bar-title').innerText = title
-        select('#side-bar-author').innerText = formatContributor(book.metadata?.author)
-        Promise.resolve(book.getCover?.())?.then(blob =>
-            blob ? select('#side-bar-cover').src = URL.createObjectURL(blob) : null)
+        // const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
+        // document.title = title
+        // select('#side-bar-title').innerText = title
+        // select('#side-bar-author').innerText = formatContributor(book.metadata?.author)
+        // Promise.resolve(book.getCover?.())?.then(blob =>
+        //     blob ? select('#side-bar-cover').src = URL.createObjectURL(blob) : null)
 
-        const toc = book.toc
-        if (toc) {
-            this.#tocView = createTOCView(toc, href => {
-                this.view.goTo(href).catch(e => console.error(e))
-                this.closeSideBar()
-            })
-            select('#toc-view').append(this.#tocView.element)
-        }
+        // const toc = book.toc
+        // if (toc) {
+        //     this.#tocView = createTOCView(toc, href => {
+        //         this.view.goTo(href).catch(e => console.error(e))
+        //         this.closeSideBar()
+        //     })
+        //     select('#toc-view').append(this.#tocView.element)
+        // }
 
         // load and show highlights embedded in the file by Calibre
-        const bookmarks = await book.getCalibreBookmarks?.()
-        if (bookmarks) {
-            const { fromCalibreHighlight } = await import('./epubcfi.js')
-            for (const obj of bookmarks) {
-                if (obj.type === 'highlight') {
-                    const value = fromCalibreHighlight(obj)
-                    const color = obj.style.which
-                    const note = obj.notes
-                    const annotation = { value, color, note }
-                    const list = this.annotations.get(obj.spine_index)
-                    if (list) list.push(annotation)
-                    else this.annotations.set(obj.spine_index, [annotation])
-                    this.annotationsByValue.set(value, annotation)
-                }
-            }
-            this.view.addEventListener('create-overlay', e => {
-                const { index } = e.detail
-                const list = this.annotations.get(index)
-                if (list) for (const annotation of list)
-                    this.view.addAnnotation(annotation)
-            })
-            this.view.addEventListener('draw-annotation', e => {
-                const { draw, annotation } = e.detail
-                const { color } = annotation
-                draw(Overlayer.highlight, { color })
-            })
-            this.view.addEventListener('show-annotation', e => {
-                const annotation = this.annotationsByValue.get(e.detail.value)
-                if (annotation.note) alert(annotation.note)
-            })
-        }
+        // const bookmarks = await book.getCalibreBookmarks?.()
+        // if (bookmarks) {
+        //     const { fromCalibreHighlight } = await import('./epubcfi.js')
+        //     for (const obj of bookmarks) {
+        //         if (obj.type === 'highlight') {
+        //             const value = fromCalibreHighlight(obj)
+        //             const color = obj.style.which
+        //             const note = obj.notes
+        //             const annotation = { value, color, note }
+        //             const list = this.annotations.get(obj.spine_index)
+        //             if (list) list.push(annotation)
+        //             else this.annotations.set(obj.spine_index, [annotation])
+        //             this.annotationsByValue.set(value, annotation)
+        //         }
+        //     }
+        //     this.view.addEventListener('create-overlay', e => {
+        //         const { index } = e.detail
+        //         const list = this.annotations.get(index)
+        //         if (list) for (const annotation of list)
+        //             this.view.addAnnotation(annotation)
+        //     })
+        //     this.view.addEventListener('draw-annotation', e => {
+        //         const { draw, annotation } = e.detail
+        //         const { color } = annotation
+        //         draw(Overlayer.highlight, { color })
+        //     })
+        //     this.view.addEventListener('show-annotation', e => {
+        //         const annotation = this.annotationsByValue.get(e.detail.value)
+        //         if (annotation.note) alert(annotation.note)
+        //     })
+        // }
     }
     highlightCurrentScreen() {
         if (this.currentScreen) {
@@ -326,19 +326,20 @@ export class Reader {
     }
     #onRelocate({ detail }) {
         const { fraction, location, tocItem, pageItem, range, doc } = detail
-        const foundWords = new Map(); // word -> count
+
+        console.log('detail', detail)
 
         this.currentScreen = getAllElementsInRange(range);
         this.highlightCurrentScreen();
 
-        const percent = percentFormat.format(fraction)
-        const loc = pageItem
-            ? `Page ${pageItem.label}`
-            : `Loc ${location.current}`
-        const slider = select('#progress-slider')
-        slider.style.visibility = 'visible'
-        slider.value = fraction
-        slider.title = `${percent} · ${loc}`
+        // const percent = percentFormat.format(fraction)
+        // const loc = pageItem
+        //     ? `Page ${pageItem.label}`
+        //     : `Loc ${location.current}`
+        // const slider = select('#progress-slider')
+        // slider.style.visibility = 'visible'
+        // slider.value = fraction
+        // slider.title = `${percent} · ${loc}`
         if (tocItem?.href) this.#tocView?.setCurrentHref?.(tocItem.href)
     }
 }

@@ -483,6 +483,7 @@ export class View extends HTMLElement {
         }
     }
     async goTo(target) {
+        debugger
         const resolved = this.resolveNavigation(target)
         try {
             await this.renderer.goTo(resolved)
