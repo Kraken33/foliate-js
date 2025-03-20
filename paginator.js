@@ -455,7 +455,7 @@ export class Paginator extends HTMLElement {
         }
         #top {
             --_gap: 7%;
-            --_margin: 48px;
+            --_margin: 18px;
             --_max-inline-size: 720px;
             --_max-block-size: 1440px;
             --_max-column-count: 2;
@@ -533,17 +533,15 @@ export class Paginator extends HTMLElement {
         </style>
         <div id="top">
             <div id="background" part="filter"></div>
-            <div id="header"></div>
             <div id="container"></div>
-            <div id="footer"></div>
         </div>
         `
 
         this.#top = this.#root.getElementById('top')
         this.#background = this.#root.getElementById('background')
         this.#container = this.#root.getElementById('container')
-        this.#header = this.#root.getElementById('header')
-        this.#footer = this.#root.getElementById('footer')
+        // this.#header = this.#root.getElementById('header')
+        // this.#footer = this.#root.getElementById('footer')
 
         this.#observer.observe(this.#container)
         this.#container.addEventListener('scroll', () => this.dispatchEvent(new Event('scroll')))
@@ -696,8 +694,8 @@ export class Paginator extends HTMLElement {
 
             this.heads = null
             this.feet = null
-            this.#header.replaceChildren()
-            this.#footer.replaceChildren()
+            // this.#header.replaceChildren()
+            // this.#footer.replaceChildren()
 
             return { flow, margin, gap, columnWidth }
         }
@@ -714,14 +712,14 @@ export class Paginator extends HTMLElement {
             gap: `${gap}px`,
             direction: this.bookDir === 'rtl' ? 'rtl' : 'ltr',
         }
-        Object.assign(this.#header.style, marginalStyle)
-        Object.assign(this.#footer.style, marginalStyle)
+        // Object.assign(this.#header.style, marginalStyle)
+        // Object.assign(this.#footer.style, marginalStyle)
         const heads = makeMarginals(marginalDivisor, 'head')
         const feet = makeMarginals(marginalDivisor, 'foot')
         this.heads = heads.map(el => el.children[0])
         this.feet = feet.map(el => el.children[0])
-        this.#header.replaceChildren(...heads)
-        this.#footer.replaceChildren(...feet)
+        // this.#header.replaceChildren(...heads)
+        // this.#footer.replaceChildren(...feet)
 
         return { height, width, margin, gap, columnWidth }
     }
@@ -936,7 +934,7 @@ export class Paginator extends HTMLElement {
         if (this.scrolled) detail.fraction = this.start / this.viewSize
         else if (this.pages > 0) {
             const { page, pages } = this
-            this.#header.style.visibility = page > 1 ? 'visible' : 'hidden'
+            // this.#header.style.visibility = page > 1 ? 'visible' : 'hidden'
             detail.fraction = (page - 1) / (pages - 2)
             detail.size = 1 / (pages - 2)
         }

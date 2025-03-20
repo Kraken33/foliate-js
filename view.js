@@ -228,6 +228,14 @@ export class View extends HTMLElement {
             this.renderer.goTo(resolved)
         })
     }
+    async openAt(book, target) {
+        await this.open(book)
+        if (target != null) {
+            const resolved = this.resolveNavigation(target)
+            await this.renderer.goTo(resolved)
+            this.history.pushState(target)
+        }
+    }
     async open(book) {
         if (typeof book === 'string'
         || typeof book.arrayBuffer === 'function'
@@ -483,7 +491,6 @@ export class View extends HTMLElement {
         }
     }
     async goTo(target) {
-        debugger
         const resolved = this.resolveNavigation(target)
         try {
             await this.renderer.goTo(resolved)

@@ -192,10 +192,7 @@ export class Reader {
     annotationsByValue = new Map()
     highlightedWords = new Set()
     currentScreen = null
-    closeSideBar() {
-        select('#dimming-overlay').classList.remove('show')
-        select('#side-bar').classList.remove('show')
-    }
+    bookContainer = null
     constructor() {
         // select('#side-bar-button').addEventListener('click', () => {
         //     select('#dimming-overlay').classList.add('show')
@@ -203,20 +200,20 @@ export class Reader {
         // })
         // select('#dimming-overlay').addEventListener('click', () => this.closeSideBar())
 
-        const menu = createMenu([
-            {
-                name: 'layout',
-                label: 'Layout',
-                type: 'radio',
-                items: [
-                    ['Paginated', 'paginated'],
-                    ['Scrolled', 'scrolled'],
-                ],
-                onclick: value => {
-                    this.view?.renderer.setAttribute('flow', value)
-                },
-            },
-        ])
+        // const menu = createMenu([
+        //     {
+        //         name: 'layout',
+        //         label: 'Layout',
+        //         type: 'radio',
+        //         items: [
+        //             ['Paginated', 'paginated'],
+        //             ['Scrolled', 'scrolled'],
+        //         ],
+        //         onclick: value => {
+        //             this.view?.renderer.setAttribute('flow', value)
+        //         },
+        //     },
+        // ])
         // menu.element.classList.add('menu')
 
         // select('#menu-button').append(menu.element)
@@ -224,10 +221,10 @@ export class Reader {
         //     menu.element.classList.toggle('show'))
         // menu.groups.layout.select('paginated')
     }
-    async open(file) {
+    async open(file, target) {
         this.view = document.getElementById('foliate-view')
         // document.body.append(this.view)
-        await this.view.open(file)
+        await this.view.openAt(file, target)
         this.view.addEventListener('load', this.#onLoad.bind(this))
         this.view.addEventListener('relocate', this.#onRelocate.bind(this))
 
@@ -250,7 +247,7 @@ export class Reader {
         //     select('#tick-marks').append(option)
         // }
 
-        document.addEventListener('keydown', this.#handleKeydown.bind(this))
+        // document.addEventListener('keydown', this.#handleKeydown.bind(this))
 
         // const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
         // document.title = title
@@ -301,17 +298,14 @@ export class Reader {
         //     })
         // }
     }
-    highlightCurrentScreen() {
-        if (this.currentScreen) {
+    highlight() {
             const foundWords = new Map(); // word -> count
             const regex = createWordMatchPattern(this.highlightedWords);
-            
-            this.currentScreen.forEach(element => {
-                processElement(element, regex, foundWords);
-            });
+
+            console.log('this.view.renderer.element', this.view.renderer)
+            processElement(this.bookContainer, regex, foundWords);
             
             console.log('Found words:', Object.fromEntries(foundWords));
-        }
     }
     setHighlightedWords(list) {
         this.highlightedWords = list
@@ -322,15 +316,17 @@ export class Reader {
         else if(k === 'ArrowRight' || k === 'l') this.view.goRight()
     }
     #onLoad({ detail: { doc } }) {
+        console.log('doc', doc)
         doc.addEventListener('keydown', this.#handleKeydown.bind(this))
     }
     #onRelocate({ detail }) {
+        this.bookContainer = detail.range.commonAncestorContainer;
         const { fraction, location, tocItem, pageItem, range, doc } = detail
 
         console.log('detail', detail)
 
-        this.currentScreen = getAllElementsInRange(range);
-        this.highlightCurrentScreen();
+        // this.currentScreen = getAllElementsInRange(range);
+        // this.highlightCurrentScreen();
 
         // const percent = percentFormat.format(fraction)
         // const loc = pageItem
