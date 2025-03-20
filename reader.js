@@ -298,9 +298,9 @@ export class Reader {
         //     })
         // }
     }
-    highlight() {
+    highlight(newWord) {
             const foundWords = new Map(); // word -> count
-            const regex = createWordMatchPattern(this.highlightedWords);
+            const regex = createWordMatchPattern(newWord ? new Set([newWord]) : this.highlightedWords);
 
             console.log('this.view.renderer.element', this.view.renderer)
             processElement(this.bookContainer, regex, foundWords);
