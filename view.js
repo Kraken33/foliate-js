@@ -353,6 +353,7 @@ export class View extends HTMLElement {
 
         // Add click handler for words
         doc.addEventListener('click', e => {
+            if(doc.getSelection()?.toString()?.trim()?.length > 0) return
             // Prevent handling if we're clicking a link
             if (e.target.closest('a[href]')) return
 
@@ -377,6 +378,20 @@ export class View extends HTMLElement {
                 element: wordInfo.element
             })
         }, { passive: true }) // Add passive flag for better performance
+
+        // Add selection change event listener
+        doc.addEventListener('selectionchange', () => {
+            const selection = doc.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (selectedText) {
+                this.#emit('text-select', {
+                    text: selectedText,
+                    range: selection.getRangeAt(0),
+                    index
+                });
+            }
+        });
 
         this.#emit('load', { doc, index })
     }
@@ -622,6 +637,28 @@ export class View extends HTMLElement {
     startMediaOverlay() {
         const { index } = this.renderer.getContents()[0]
         return this.mediaOverlay.start(index)
+    }
+    getSelectedText() {
+        const contents = this.renderer.getContents();
+        for (const { doc } of contents) {
+            const selection = doc.getSelection();
+            const text = selection.toString().trim();
+            if (text) {
+                return {
+                    text,
+                    range: selection.getRangeAt(0),
+                    index: this.renderer.getContents()[0].index
+                };
+            }
+        }
+        return null;
+    }
+    clearSelection() {
+        const contents = this.renderer.getContents();
+        for (const { doc } of contents) {
+            const selection = doc.getSelection();
+            selection.removeAllRanges();
+        }
     }
 }
 

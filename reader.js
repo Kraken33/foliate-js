@@ -3,7 +3,7 @@ import { createTOCView } from './ui/tree.js'
 import { createMenu } from './ui/menu.js'
 import { Overlayer } from './overlayer.js'
 
-const getCSS = ({ spacing, justify, hyphenate }) => `
+const getCSS = ({ spacing, justify, hyphenate, fontSize }) => `
     @namespace epub "http://www.idpf.org/2007/ops";
     html {
         color-scheme: light dark;
@@ -15,6 +15,7 @@ const getCSS = ({ spacing, justify, hyphenate }) => `
         }
     }
     p, li, blockquote, dd {
+        font-size: ${fontSize};
         line-height: ${spacing};
         text-align: ${justify ? 'justify' : 'start'};
         -webkit-hyphens: ${hyphenate ? 'auto' : 'manual'};
@@ -41,9 +42,6 @@ const getCSS = ({ spacing, justify, hyphenate }) => `
         display: none;
     }
 `
-
-const select = selector => document.querySelector(selector)
-const selectAll = selector => document.querySelectorAll(selector)
 
 const locales = 'en'
 const percentFormat = new Intl.NumberFormat(locales, { style: 'percent' })
@@ -187,6 +185,7 @@ export class Reader {
         spacing: 1.4,
         justify: true,
         hyphenate: true,
+        fontSize: '100%',
     }
     annotations = new Map()
     annotationsByValue = new Map()
@@ -297,6 +296,9 @@ export class Reader {
         //         if (annotation.note) alert(annotation.note)
         //     })
         // }
+    }
+    setStyles(styles) {
+        this.style = { ...this.style, ...styles }
     }
     highlight(newWord) {
             const foundWords = new Map(); // word -> count
