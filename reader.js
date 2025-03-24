@@ -340,4 +340,27 @@ export class Reader {
         // slider.title = `${percent} · ${loc}`
         if (tocItem?.href) this.#tocView?.setCurrentHref?.(tocItem.href)
     }
+    unhighlight(word) {
+        if (!this.bookContainer) return;
+        
+        // Find all highlighted spans
+        const highlightedSpans = this.bookContainer.querySelectorAll('span.highlight-word');
+        
+        // Loop through spans and unhighlight those matching the word
+        highlightedSpans.forEach(span => {
+            if (span.textContent.toLowerCase() === word.toLowerCase()) {
+                // Get the text content
+                const text = span.textContent;
+                
+                // Create a text node to replace the span
+                const textNode = document.createTextNode(text);
+                
+                // Replace the span with the text node
+                span.parentNode.replaceChild(textNode, span);
+            }
+        });
+        
+        // Remove the word from highlighted words set
+        this.highlightedWords.delete(word);
+    }
 }
