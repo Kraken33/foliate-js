@@ -369,15 +369,28 @@ export class View extends HTMLElement {
             const wordRange = doc.createRange()
             wordRange.setStart(wordInfo.range.node, wordInfo.range.startOffset)
             wordRange.setEnd(wordInfo.range.node, wordInfo.range.endOffset)
+            // Get paginator information
+            const paginator = this.renderer
+            
+
+            // Calculate the actual position considering scroll and page offset
+            const elelemRect =  wordInfo.element.getBoundingClientRect()
+            
+            // Calculate final position
+            const position = {
+                top: elelemRect.top,
+                left: paginator.size - ((paginator.page * paginator.size) - elelemRect.left)
+            }
 
             this.#emit('word-click', {
                 word: wordInfo.word,
                 context: wordInfo.context,
                 range: wordRange,
                 index,
-                element: wordInfo.element
+                element: wordInfo.element,
+                position
             })
-        }, { passive: true }) // Add passive flag for better performance
+        }, { passive: true })
 
         // Add selection change event listener
         doc.addEventListener('selectionchange', () => {
