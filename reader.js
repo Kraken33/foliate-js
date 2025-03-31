@@ -6,7 +6,7 @@ import { Overlayer } from './overlayer.js'
 const getCSS = ({ spacing, justify, hyphenate, fontSize }) => `
     @namespace epub "http://www.idpf.org/2007/ops";
     html {
-        color-scheme: light dark;
+        color-scheme: light;
     }
     /* https://github.com/whatwg/html/issues/5426 */
     @media (prefers-color-scheme: dark) {
@@ -155,6 +155,7 @@ function highlightWordInRange(node, startOffset, endOffset) {
  * @param {Map} foundWords - Map to store word counts
  */
 function processElement(element, regex, foundWords) {
+    debugger;
     // Store matches to process later
     const matches = [];
     
@@ -192,6 +193,7 @@ export class Reader {
     highlightedWords = new Set()
     currentScreen = null
     bookContainer = null
+    swipingEnabled = true
     constructor() {
         // select('#side-bar-button').addEventListener('click', () => {
         //     select('#dimming-overlay').classList.add('show')
@@ -222,7 +224,6 @@ export class Reader {
     }
     async open(file, target) {
         this.view = document.getElementById('foliate-view')
-        // document.body.append(this.view)
         await this.view.openAt(file, target)
         this.view.addEventListener('load', this.#onLoad.bind(this))
         this.view.addEventListener('relocate', this.#onRelocate.bind(this))
@@ -230,6 +231,11 @@ export class Reader {
         const { book } = this.view
         this.view.renderer.setStyles?.(getCSS(this.style))
         this.view.renderer.next()
+
+        // Set initial swipe state on renderer
+        if (this.swipingEnabled) {
+            this.view.renderer.setAttribute('swipe-enabled', '');
+        }
 
         // select('#header-bar').style.visibility = 'visible'
         // select('#nav-bar').style.visibility = 'visible'
@@ -302,12 +308,10 @@ export class Reader {
     }
     highlight(newWord) {
             const foundWords = new Map(); // word -> count
-            const regex = createWordMatchPattern(newWord ? new Set([newWord]) : this.highlightedWords);
-
-            console.log('this.view.renderer.element', this.view.renderer)
-            processElement(this.bookContainer, regex, foundWords);
-            
-            console.log('Found words:', Object.fromEntries(foundWords));
+        const regex = createWordMatchPattern(newWord ? new Set([newWord]) : this.highlightedWords);
+        
+        processElement(this.bookContainer, regex, foundWords);
+        console.log('Found words:', Object.fromEntries(foundWords));
     }
     setHighlightedWords(list) {
         this.highlightedWords = list
@@ -322,6 +326,7 @@ export class Reader {
         doc.addEventListener('keydown', this.#handleKeydown.bind(this))
     }
     #onRelocate({ detail }) {
+        debugger;
         this.bookContainer = detail.range.commonAncestorContainer;
         const { fraction, location, tocItem, pageItem, range, doc } = detail
 
@@ -362,5 +367,13 @@ export class Reader {
         
         // Remove the word from highlighted words set
         this.highlightedWords.delete(word);
+    }
+    enableSwiping() {
+        this.swipingEnabled = true;
+        this.view?.renderer?.setAttribute('swipe-enabled', '');
+    }
+    disableSwiping() {
+        this.swipingEnabled = false;
+        this.view?.renderer?.removeAttribute('swipe-enabled');
     }
 }

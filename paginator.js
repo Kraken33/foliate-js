@@ -273,7 +273,7 @@ class View {
         })
     }
     render(layout) {
-        if (!layout) return
+        if (!layout || this.wasDestroyed) return
         this.#column = layout.flow !== 'scrolled'
         this.#layout = layout
         if (this.#column) this.columnize(layout)
@@ -793,6 +793,9 @@ export class Paginator extends HTMLElement {
         })
     }
     #onTouchStart(e) {
+        // Check if swiping is enabled
+        if (!this.hasAttribute('swipe-enabled')) return;
+        
         const touch = e.changedTouches[0]
         this.#touchState = {
             x: touch?.screenX, y: touch?.screenY,
@@ -801,6 +804,9 @@ export class Paginator extends HTMLElement {
         }
     }
     #onTouchMove(e) {
+        // Check if swiping is enabled
+        if (!this.hasAttribute('swipe-enabled')) return;
+        
         const state = this.#touchState
         if (state.pinched) return
         state.pinched = globalThis.visualViewport.scale > 1
@@ -823,6 +829,9 @@ export class Paginator extends HTMLElement {
         this.scrollBy(dx, dy)
     }
     #onTouchEnd() {
+        // Check if swiping is enabled
+        if (!this.hasAttribute('swipe-enabled')) return;
+        
         this.#touchScrolled = false
         if (this.scrolled) return
 
@@ -1091,6 +1100,7 @@ export class Paginator extends HTMLElement {
         this.#view.document.defaultView.focus()
     }
     destroy() {
+        this.wasDestroyed = true;
         this.#observer.unobserve(this)
         this.#view.destroy()
         this.#view = null

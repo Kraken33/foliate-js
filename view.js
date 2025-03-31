@@ -103,10 +103,7 @@ export const makeBook = async file => {
             book = await new EPUB(loader).init()
         }
     }
-    else if (await isPDF(file)) {
-        const { makePDF } = await import('./pdf.js')
-        book = await makePDF(file)
-    }
+
     else {
         const { isMOBI, MOBI } = await import('./mobi.js')
         if (await isMOBI(file)) {
@@ -232,6 +229,7 @@ export class View extends HTMLElement {
         await this.open(book)
         if (target != null) {
             const resolved = this.resolveNavigation(target)
+            console.log(resolved);
             await this.renderer.goTo(resolved)
             this.history.pushState(target)
         }
@@ -379,7 +377,9 @@ export class View extends HTMLElement {
             // Calculate final position
             const position = {
                 top: elelemRect.top,
-                left: paginator.size - ((paginator.page * paginator.size) - elelemRect.left)
+                left: paginator.size - ((paginator.page * paginator.size) - elelemRect.left),
+                width: elelemRect.width,
+                height: elelemRect.height
             }
 
             this.#emit('word-click', {
