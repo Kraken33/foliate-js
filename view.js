@@ -504,6 +504,69 @@ export class View extends HTMLElement {
             return { index, anchor }
         }
     }
+    async getFractionFromCFI(cfi) {
+        if (!this.#sectionProgress) {
+            throw new Error('Section progress not initialized')
+        }
+        
+        try {
+            // Resolve the CFI to get index and anchor
+            const { index, anchor } = this.resolveCFI(cfi)
+            if (index == null) {
+                throw new Error('Invalid CFI: could not resolve to section index')
+            }
+            
+            // If there's no anchor function, return the fraction for the start of the section
+            if (!anchor || typeof anchor !== 'function') {
+                const progress = this.#sectionProgress.getProgress(index, 0)
+                return progress.fraction ?? 0
+            }
+            
+            // Create document to get the range from the anchor
+            const section = this.book.sections[index]
+            if (!section.createDocument) {
+                // Fallback to section start if document can't be created
+                const progress = this.#sectionProgress.getProgress(index, 0)
+                return progress.fraction ?? 0
+            }
+            
+            const doc = await section.createDocument()
+            const range = anchor(doc)
+            
+            if (!range) {
+                // Fallback to section start if range is invalid
+                const progress = this.#sectionProgress.getProgress(index, 0)
+                return progress.fraction ?? 0
+            }
+            
+            // Calculate the position within the section
+            // This is an approximation based on the range position in the document
+            let sectionFraction = 0
+            if (range.startContainer && range.startOffset !== undefined) {
+                // Create a range from the start of the document to our position
+                const startRange = doc.createRange()
+                startRange.setStartBefore(doc.body.firstChild || doc.body)
+                startRange.setEnd(range.startContainer, range.startOffset)
+                
+                // Get text content lengths as a rough measure
+                const totalText = doc.body.textContent || ''
+                const beforeText = startRange.toString()
+                
+                if (totalText.length > 0) {
+                    sectionFraction = beforeText.length / totalText.length
+                }
+            }
+            
+            // Get the progress for this position
+            const progress = this.#sectionProgress.getProgress(index, sectionFraction)
+            return progress.fraction ?? 0
+            
+        } catch (e) {
+            console.error(e)
+            console.error(`Could not get fraction from CFI ${cfi}`)
+            throw e
+        }
+    }
     resolveNavigation(target) {
         try {
             if (typeof target === 'number') return { index: target }
@@ -666,6 +729,198 @@ export class View extends HTMLElement {
         }
         return null;
     }
+    async getTextFromFractions(startFraction, endFraction) {
+        if (!this.#sectionProgress) {
+            throw new Error('Section progress not initialized')
+        }
+        
+        // Validate fractions
+        if (startFraction < 0 || startFraction > 1 || endFraction < 0 || endFraction > 1) {
+            throw new Error('Fractions must be between 0 and 1')
+        }
+        
+        if (startFraction > endFraction) {
+            throw new Error('Start fraction must be less than or equal to end fraction')
+        }
+        
+        // Get section indices and fractions within sections
+        const [startIndex, startFractionInSection] = this.#sectionProgress.getSection(startFraction)
+        const [endIndex, endFractionInSection] = this.#sectionProgress.getSection(endFraction)
+        
+        let extractedText = ''
+        
+        if (startIndex === endIndex) {
+            // Both fractions are in the same section
+            const section = this.book.sections[startIndex]
+            if (!section.createDocument) return ''
+            
+            const doc = await section.createDocument()
+            const totalText = doc.body.textContent || ''
+            
+            if (totalText.length === 0) return ''
+            
+            const startCharIndex = Math.floor(startFractionInSection * totalText.length)
+            const endCharIndex = Math.floor(endFractionInSection * totalText.length)
+            
+            // Create ranges based on character positions
+            const startRange = this.#getPositionInDocument(doc, startCharIndex)
+            const endRange = this.#getPositionInDocument(doc, endCharIndex)
+            
+            if (startRange && endRange) {
+                const range = doc.createRange()
+                range.setStart(startRange.node, startRange.offset)
+                range.setEnd(endRange.node, endRange.offset)
+                extractedText = this.#extractTextFromRange(range)
+            } else {
+                // Fallback to extracting by character positions in text content
+                extractedText = totalText.substring(startCharIndex, endCharIndex)
+            }
+        } else {
+            // Spans multiple sections
+            for (let i = startIndex; i <= endIndex; i++) {
+                const section = this.book.sections[i]
+                if (!section.createDocument) continue
+                
+                const doc = await section.createDocument()
+                let sectionText = ''
+                
+                if (i === startIndex) {
+                    // First section: from start fraction to end
+                    const totalText = doc.body.textContent || ''
+                    if (totalText.length > 0) {
+                        const startCharIndex = Math.floor(startFractionInSection * totalText.length)
+                        const startRange = this.#getPositionInDocument(doc, startCharIndex)
+                        
+                        if (startRange) {
+                            const range = doc.createRange()
+                            range.setStart(startRange.node, startRange.offset)
+                            range.setEndAfter(doc.body.lastChild || doc.body)
+                            sectionText = this.#extractTextFromRange(range)
+                        } else {
+                            // Fallback to substring
+                            sectionText = totalText.substring(startCharIndex)
+                        }
+                    }
+                } else if (i === endIndex) {
+                    // Last section: from start to end fraction
+                    const totalText = doc.body.textContent || ''
+                    if (totalText.length > 0) {
+                        const endCharIndex = Math.floor(endFractionInSection * totalText.length)
+                        const endRange = this.#getPositionInDocument(doc, endCharIndex)
+                        
+                        if (endRange) {
+                            const range = doc.createRange()
+                            range.setStartBefore(doc.body.firstChild || doc.body)
+                            range.setEnd(endRange.node, endRange.offset)
+                            sectionText = this.#extractTextFromRange(range)
+                        } else {
+                            // Fallback to substring
+                            sectionText = totalText.substring(0, endCharIndex)
+                        }
+                    }
+                } else {
+                    // Middle sections: entire content
+                    sectionText = this.#extractTextFromDocument(doc)
+                }
+                
+                if (sectionText.trim()) {
+                    extractedText += (extractedText ? '\n\n' : '') + sectionText.trim()
+                }
+            }
+        }
+        
+        return extractedText.trim()
+    }
+    
+    #getPositionInDocument(doc, charIndex) {
+        if (charIndex <= 0) return null
+        if (!doc.body) return null
+        
+        const walker = doc.createTreeWalker(
+            doc.body,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: (node) => {
+                    // Skip script and style elements
+                    const parent = node.parentElement
+                    if (parent) {
+                        const tagName = parent.tagName.toLowerCase()
+                        if (tagName === 'script' || tagName === 'style') {
+                            return NodeFilter.FILTER_REJECT
+                        }
+                    }
+                    return NodeFilter.FILTER_ACCEPT
+                }
+            }
+        )
+        
+        let currentCharCount = 0
+        let node
+        
+        while (node = walker.nextNode()) {
+            const nodeText = node.nodeValue || ''
+            const nodeLength = nodeText.length
+            
+            if (currentCharCount + nodeLength >= charIndex) {
+                const offset = charIndex - currentCharCount
+                return { node, offset: Math.max(0, offset) }
+            }
+            
+            currentCharCount += nodeLength
+        }
+        
+        return null
+    }
+    
+    #extractTextFromRange(range) {
+        if (!range) return ''
+        
+        // Create a temporary container to hold the range contents
+        const fragment = range.cloneContents()
+        const tempDiv = range.startContainer.ownerDocument.createElement('div')
+        tempDiv.appendChild(fragment)
+        
+        return this.#extractTextFromElement(tempDiv)
+    }
+    
+    #extractTextFromDocument(doc) {
+        return this.#extractTextFromElement(doc.body)
+    }
+    
+    #extractTextFromElement(element) {
+        if (!element) return ''
+        
+        // Walk through all text nodes and extract text
+        const walker = element.ownerDocument.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: (node) => {
+                    // Skip script and style elements
+                    const parent = node.parentElement
+                    if (parent) {
+                        const tagName = parent.tagName.toLowerCase()
+                        if (tagName === 'script' || tagName === 'style') {
+                            return NodeFilter.FILTER_REJECT
+                        }
+                    }
+                    return NodeFilter.FILTER_ACCEPT
+                }
+            }
+        )
+        
+        let text = ''
+        let node
+        while (node = walker.nextNode()) {
+            const nodeText = node.nodeValue.trim()
+            if (nodeText) {
+                text += (text ? ' ' : '') + nodeText
+            }
+        }
+        
+        return text
+    }
+
     clearSelection() {
         const contents = this.renderer.getContents();
         for (const { doc } of contents) {
